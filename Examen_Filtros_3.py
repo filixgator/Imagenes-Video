@@ -310,6 +310,7 @@ def _main():
     print('l - Tabasco')
     print('m - Indoor Sing')
     print('n - Moo Spook')
+    print('o - Cow')
     image_selected = str(input())
     
     print('Select Filter:')
@@ -369,6 +370,9 @@ def _main():
     elif image_selected == 'n':
         lbl_Source = 'Moo Spook'
         url = 'https://raw.githubusercontent.com/filixgator/Imagenes-Video/master/vaca_1.png'
+    elif image_selected == 'o':
+        lbl_Source = 'Cow'
+        url = 'https://raw.githubusercontent.com/filixgator/Imagenes-Video/master/vaca_2.png'
         
 
     source, source_Color = url_to_image(url)

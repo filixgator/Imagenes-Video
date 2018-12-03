@@ -1,9 +1,11 @@
 import cv2
 import requests
+import time
+import datetime
 import numpy as np
 from urllib.request import urlopen
 
-ip = "10.12.5.48"
+ip = "192.168.1.67"
 
 def url_to_image(url):
     resp = urlopen(url)
@@ -64,8 +66,10 @@ def face_img_mask(img, gray, crown_Gris, crown, face_cascade, eyes_cascade):
             x1, x2 = x, x + crown_resized.shape[1]
             alpha_s = crown_resized[:, :, 3] / 255.0
             alpha_l = 1.0 - alpha_s
-            for c in range(0, 3):
-                    img[y1:y2, x1:x2, c] = (alpha_s * crown_resized[:, :, c] + alpha_l * img[y1:y2, x1:x2, c])
+            try:
+                for c in range(0, 3):
+                        img[y1:y2, x1:x2, c] = (alpha_s * crown_resized[:, :, c] + alpha_l * img[y1:y2, x1:x2, c])
+            except: continue
             detected_face_gray = gray[y:y+h, x:x+w]
             detected_face_color = img[y:y+h, x:x+w]
             eyes = eyes_cascade.detectMultiScale(detected_face_gray,1.3, 7)
@@ -74,13 +78,15 @@ def face_img_mask(img, gray, crown_Gris, crown, face_cascade, eyes_cascade):
 def face_img_barba(img, gray, crown_Gris, crown, face_cascade, eyes_cascade):
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
     for (x, y, w, h) in faces:
-            crown_resized = cv2.resize(crown, (w, int(h/2)))
+            crown_resized = cv2.resize(crown, (w - int(w/10), int(h/2)))
             y1, y2 = y + int(h/1.8), y + int(h/1.8) + crown_resized.shape[0]
-            x1, x2 = x, x + crown_resized.shape[1]
+            x1, x2 = x + int(w/10), x + int(w/10) + crown_resized.shape[1]
             alpha_s = crown_resized[:, :, 3] / 255.0
             alpha_l = 1.0 - alpha_s
-            for c in range(0, 3):
-                    img[y1:y2, x1:x2, c] = (alpha_s * crown_resized[:, :, c] + alpha_l * img[y1:y2, x1:x2, c])
+            try:
+                for c in range(0, 3):
+                        img[y1:y2, x1:x2, c] = (alpha_s * crown_resized[:, :, c] + alpha_l * img[y1:y2, x1:x2, c])
+            except: continue
             detected_face_gray = gray[y:y+h, x:x+w]
             detected_face_color = img[y:y+h, x:x+w]
             eyes = eyes_cascade.detectMultiScale(detected_face_gray,1.3, 7)
@@ -109,20 +115,29 @@ def face_img_stars(img, gray, stars, face_cascade, eyes_cascade, smile_cascade):
     img_out = cv2.add(img_out_1, img_out_2)
     return img_out, mask
 
-def face_img_antler(img, gray, antler_Gris, antler, face_cascade, eyes_cascade):
+def face_img_antler(img, gray, antler_Gris, antler, face_cascade, eyes_cascade, lights):
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
     for (x, y, w, h) in faces:
-            antler_resized = cv2.resize(antler, (w, h)) #Resize img
-            y1, y2 = y, y + antler_resized.shape[0]#indica posiciones de x y y para dos puntos
-            x1, x2 = x, x + antler_resized.shape[1]
+            antler_resized = cv2.resize(antler, (int(1.5*w), h)) #Resize img
+            y1, y2 = y - int(h/4), y - int(h/4) + antler_resized.shape[0]#indica posiciones de x y y para dos puntos
+            x1, x2 = x - int(w/6), x - int(w/6) + antler_resized.shape[1]
             alpha_s = antler_resized[:, :, 3] / 255.0 #normaliza??
             alpha_l = 1.0 - alpha_s #calcula alpha??
-            for c in range(0, 3):
-                    img[y1:y2, x1:x2, c] = (alpha_s * antler_resized[:, :, c] + alpha_l * img[y1:y2, x1:x2, c])
+            try:
+                    for c in range(0, 3):
+                            img[y1:y2, x1:x2, c] = (alpha_s * antler_resized[:, :, c] + alpha_l * img[y1:y2, x1:x2, c])
+            except: continue
             detected_face_gray = gray[y:y+h, x:x+w]
             detected_face_color = img[y:y+h, x:x+w]
             eyes = eyes_cascade.detectMultiScale(detected_face_gray,1.3, 7)
-    return img, gray
+    lights_resized = cv2.resize(lights, (img.shape[1], 135))
+    y1, y2 = 0, lights_resized.shape[0]
+    x1, x2 = 0, lights_resized.shape[1]
+    alpha_s = lights_resized[:, :, 3] / 255.0 
+    alpha_l = 1.0 - alpha_s 
+    for c in range(0, 3):
+            img[y1:y2, x1:x2, c] = (alpha_s * lights_resized[:, :, c] + alpha_l * img[y1:y2, x1:x2, c])
+    return img, img
 
 
 def face_img_around(img, face_cascade, stars, gray):
@@ -133,40 +148,39 @@ def face_img_around(img, face_cascade, stars, gray):
     another_mask[:] = (0)
     yet_another_mask = np.zeros((480, 640), np.uint8)
     yet_another_mask[:] = (0)
-    
-    for (x, y, w, h) in faces:
-                face_elipse = 255 * (cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(w-int(w/3),h)))
-                small_mask = np.zeros((w, h), np.uint8)
-                small_mask[:] = (0)
-                
-                half = int((w-int(w/3))/2)
-                mask[y:y+h, x+int(int(w/2)-half):(x+int(int(w/2)-half))+(w-int(w/3))] = face_elipse
-                
-                img_out_nel = cv2.bitwise_and(img, img, mask = mask) #mascara negra con cara
-    
-                carita = cv2.resize(img_out_nel, (0,0), fx=0.25, fy=0.25)
-                mask_carita = cv2.resize(mask, (0,0), fx=0.25, fy=0.25)
-    
-#    for (x, y, w, h) in faces:
-                another_mask[(y-40):((y-40)+carita.shape[0]),(x-40):((x-40)+carita.shape[1])]=carita
-                another_mask[(y-40):((y-40)+carita.shape[0]),(x+w-80):((x+w-80)+carita.shape[1])]=carita
-        
-                yet_another_mask[(y-40):((y-40)+mask_carita.shape[0]),(x-40):((x-40)+mask_carita.shape[1])]=mask_carita
-                yet_another_mask[(y-40):((y-40)+mask_carita.shape[0]),(x+w-80):((x+w-80)+mask_carita.shape[1])]=mask_carita
-        
-    mask_inv = cv2.bitwise_not(yet_another_mask)/255 #fondo blanco circulos negros
-    yet_another_mask = yet_another_mask/255 #fondo negro circulos blancos
-    
-    img[:,:,0] = img[:,:,0]*mask_inv #imagen con circulos negros
-    img[:,:,1] = img[:,:,1]*mask_inv
-    img[:,:,2] = img[:,:,2]*mask_inv
+    try:
+            for (x, y, w, h) in faces:
+                        face_elipse = 255 * (cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(w-int(w/3),h)))
+                        small_mask = np.zeros((w, h), np.uint8)
+                        small_mask[:] = (0)
+                        
+                        half = int((w-int(w/3))/2)
+                        mask[y:y+h, x+int(int(w/2)-half):(x+int(int(w/2)-half))+(w-int(w/3))] = face_elipse
+                        
+                        img_out_nel = cv2.bitwise_and(img, img, mask = mask) #mascara negra con cara
 
-    img_outtie = cv2.add(img, another_mask)
-    
+                        carita = cv2.resize(img_out_nel, (0,0), fx=0.25, fy=0.25)
+                        mask_carita = cv2.resize(mask, (0,0), fx=0.25, fy=0.25)
+
+                        another_mask[(y-40):((y-40)+carita.shape[0]),(x-40):((x-40)+carita.shape[1])]=carita
+                        another_mask[(y-40):((y-40)+carita.shape[0]),(x+w-80):((x+w-80)+carita.shape[1])]=carita
+                
+                        yet_another_mask[(y-40):((y-40)+mask_carita.shape[0]),(x-40):((x-40)+mask_carita.shape[1])]=mask_carita
+                        yet_another_mask[(y-40):((y-40)+mask_carita.shape[0]),(x+w-80):((x+w-80)+mask_carita.shape[1])]=mask_carita
+                
+            mask_inv = cv2.bitwise_not(yet_another_mask)/255 #fondo blanco circulos negros
+            yet_another_mask = yet_another_mask/255 #fondo negro circulos blancos
+
+            img[:,:,0] = img[:,:,0]*mask_inv #imagen con circulos negros
+            img[:,:,1] = img[:,:,1]*mask_inv
+            img[:,:,2] = img[:,:,2]*mask_inv
+
+            img_outtie = cv2.add(img, another_mask)
+    except:
+            img_outtie = img.copy()
     return img_outtie, gray
 
 def main(ip):
-    gui = cv2.imread("gui.png")
     face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
     eyes_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
     smile_cascade= cv2.CascadeClassifier('haarcascade_smile.xml')
@@ -180,15 +194,20 @@ def main(ip):
     url_stars = 'https://raw.githubusercontent.com/filixgator/Imagenes-Video/master/space.jpg'
     url_barba = 'https://raw.githubusercontent.com/filixgator/Imagenes-Video/master/barba_1.png'
     url_gradi = 'https://raw.githubusercontent.com/filixgator/Imagenes-Video/master/gradient_colors.jpg'
+    url_antler = 'https://raw.githubusercontent.com/filixgator/Imagenes-Video/master/Proyecto%20Final%20-%20Filtros/hat.png'
+    url_gui = 'https://raw.githubusercontent.com/filixgator/Imagenes-Video/master/Proyecto%20Final%20-%20Filtros/gui.png'
+    url_lights = 'https://raw.githubusercontent.com/filixgator/Imagenes-Video/master/Proyecto%20Final%20-%20Filtros/christmas_lights.png'
     gray_mask, mask = url_to_image(url_purple_mask)
     gray_stars, stars = url_to_image(url_stars)
     gray_barba, barba = url_to_image(url_barba)
     gray_gradi, gradi = url_to_image(url_gradi)
-    gray_antler = cv2.imread("hat.png",-1)
-    antler = cv2.imread("hat.png",-1)
+    gray_antler, antler = url_to_image(url_antler)
+    gray_gui, gui = url_to_image(url_gui)
+    gray_lights, lights = url_to_image(url_lights)
 ###
     filters = build_filters()
 ###
+    pic_num = 0
     while True:
         if streaming:
             try:
@@ -207,42 +226,37 @@ def main(ip):
         elif filter_num == 1:
             img, gray_img = face_img_stars(img, gray, stars, face_cascade, eyes_cascade, smile_cascade)
         elif filter_num == 2:
-            img, gray_img = face_img_barba(img, gray, gray_barba, barba, face_cascade, eyes_cascade)
-        elif filter_num == 3:
-            img, gray_img = gradient_img(img, gray, gradi, gray_gradi)
-        elif filter_num == 4:
             img, gray_img = face_img_mask(img, gray, gray_mask, mask, face_cascade, eyes_cascade)
+        elif filter_num == 3:
+            img, gray_img = face_img_barba(img, gray, gray_barba, barba, face_cascade, eyes_cascade)
+        elif filter_num == 4:
+            img, gray_img = gradient_img(img, gray, gradi, gray_gradi)
         elif filter_num == 5:
             img, gray_img = process_inhaler(img, filters)
         elif filter_num == 6:
             img, gray_img = face_img_around(img, face_cascade, stars, gray)
         elif filter_num == 7:
-            img, gray_img = face_img_antler(img, gray, gray_antler, antler, face_cascade, eyes_cascade)
-        elif filter_num == 8:
-            print("8")
-            filter_num = 3
-        elif filter_num == 9:
-            print("9")
-            filter_num = 3
-
+            img, gray_img = face_img_antler(img, gray, gray_antler, antler, face_cascade, eyes_cascade, lights)
+                
         shape = img.shape
         rows = shape[0]
         cols = shape[1]
         
         img_flipped = img.copy()
-##        img_flipped = cv2.flip( img, 1 )
+        img_flipped = cv2.flip( img, 1 )
 
-        gui[121:121+rows,132:132+cols] = img
+        gui[121:121+rows,132:132+cols] = img_flipped
         cv2.namedWindow('img',cv2.WINDOW_NORMAL)
         cv2.imshow('img', gui)
-##        cv2.imshow('gray',gray_img)
+##        cv2.imshow('gray',lights)
         k = cv2.waitKey(30)
         
         if k == 27:
-##            print("Y: " + str(img_flipped.shape[0]))
-##            print("X: " + str(img_flipped.shape[1]))
-##            print(gray_img[0,0])
             break
+        elif k == 32:
+            date_and_time = datetime.datetime.now().strftime("%I_%M_%p_%B_%d_%Y_")
+            cv2.imwrite(str(date_and_time) + str(pic_num) + ".jpg", img_flipped)
+            pic_num += 1
         else:
             if k == -1:
                 continue
@@ -253,7 +267,6 @@ def main(ip):
                     streaming = True
             else:
                 filter_num = k -48
-            print(k)
             continue
     cap.release()
     cv2.destroyAllWindows()
